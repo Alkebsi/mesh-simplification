@@ -4,7 +4,7 @@ This viewer is based on [Three.js](https://threejs.org/) and the WASM version of
 Upon the request of a protentional client, this was made to demonstrate how can it be useful. Instead of using an AWS Lambda function (probably written in Python), I went to this direction.
 
 But before anything, check it out!
-[Online Demo](http://urlHere.com)
+[Online Demo](https://mesh-simplification.vercel.app/)
 
 The example uses a `MeshNormalMaterail()` to show specifically all edges of the mesh so that artifacts will be easily detected during the process. The top-right panel may also feel a bit stiff, yet that is duo to time limitations.
 
