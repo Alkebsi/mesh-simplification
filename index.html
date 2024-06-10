@@ -1,85 +1,74 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  
-  <title>Quadratic Simplification Viewer | by MKebsi</title>
-  <meta name="description" content="A web-based quadratic mesh simplification app with perview" />
+  <head>
+    <meta charset="UTF-8">
+    
+    <title>Quadratic Simplification Viewer | by MKebsi</title>
+    <meta name="description" content="A web-based quadratic mesh simplification app with perview" />
 
-  <meta itemprop="name" content="Quadratic Simplification Viewer" />
-  <meta itemprop="description" content="A web-based quadratic mesh simplification app with perview" />
-  <meta itemprop="image" content="https://{***URL***}/social/social-cover.jpg"/>
-  
-  <meta property="og:type" content="website" />
-  <meta property="og:site_name" content="Quadratic Simplification Viewer" />
-  <meta property="og:title" content="Quadratic Simplification Viewer | by MKebsi" />
-  <meta property="og:url" content="https://{***URL***}/" />
-  <meta property="og:image" content="https://{***URL***}/social/social-cover.jpg" />
-  <meta property="og:image:alt" content="A screenshot of the website" />
-  <meta property="og:image:width" content="2960" />
-  <meta property="og:image:height" content="1440" />
-  <meta property="og:description" content="A web-based quadratic mesh simplification app with perview" />
+    <meta itemprop="name" content="Quadratic Simplification Viewer" />
+    <meta itemprop="description" content="A web-based quadratic mesh simplification app with perview" />
+    <meta itemprop="image" content="https://{***URL***}/social/social-cover.jpg"/>
+    
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Quadratic Simplification Viewer" />
+    <meta property="og:title" content="Quadratic Simplification Viewer | by MKebsi" />
+    <meta property="og:url" content="https://{***URL***}/" />
+    <meta property="og:image" content="https://{***URL***}/social/social-cover.jpg" />
+    <meta property="og:image:alt" content="A screenshot of the website" />
+    <meta property="og:image:width" content="2960" />
+    <meta property="og:image:height" content="1440" />
+    <meta property="og:description" content="A web-based quadratic mesh simplification app with perview" />
 
-  <meta name="twitter:card" content="summary" />
-  <meta name="twitter:title" content="Quadratic Simplification Viewer | by MKebsi" />
-  <meta name="twitter:url" content="https://{***URL***}/" />
-  <meta name="twitter:image" content="https://{***URL***}/social/social-cover.jpg" />
-  <meta name="twitter:site" content="Quadratic Simplification Viewer" />
-  <meta name="twitter:creator" content="@MrKebsi" />
-  <meta name="twitter:description" content="A web-based quadratic mesh simplification app with perview" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Quadratic Simplification Viewer | by MKebsi" />
+    <meta name="twitter:url" content="https://{***URL***}/" />
+    <meta name="twitter:image" content="https://{***URL***}/social/social-cover.jpg" />
+    <meta name="twitter:site" content="Quadratic Simplification Viewer" />
+    <meta name="twitter:creator" content="@MrKebsi" />
+    <meta name="twitter:description" content="A web-based quadratic mesh simplification app with perview" />
 
-  <link rel="apple-touch-icon" sizes="180x180" href="./favicon/apple-touch-icon.png" />
-  <link rel="icon" type="image/png" sizes="32x32" href="./favicon/favicon-32x32.png" />
-  <link rel="icon" type="image/png" sizes="16x16" href="./favicon/favicon-16x16.png" />
-  <link rel="manifest" href="./favicon/site.webmanifest" />
-  <meta name="apple-mobile-web-app-title" content="Quadratic Simplification Viewer" />
-  <meta name="application-name" content="Quadratic Simplification Viewer" />
-  <meta name="msapplication-TileColor" content="#f5eac7" />
-  <meta name="theme-color" content="#0d0c0d" />
-  
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="robots" content="index, follow" />
+    <link rel="apple-touch-icon" sizes="180x180" href="./favicon/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="./favicon/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="./favicon/favicon-16x16.png" />
+    <link rel="manifest" href="./favicon/site.webmanifest" />
+    <meta name="apple-mobile-web-app-title" content="Quadratic Simplification Viewer" />
+    <meta name="application-name" content="Quadratic Simplification Viewer" />
+    <meta name="msapplication-TileColor" content="#f5eac7" />
+    <meta name="theme-color" content="#0d0c0d" />
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="index, follow" />
 
-  <link rel="stylesheet" href="style/main.css"/>
-  <link rel="canonical" href="https://{***URL***}/" />
-</head>
-
-<body>
-  <canvas id="c"></canvas>
-  <div id="content">
-    <div id="ui-con">
-      <p class="ui-title opened_ui">Settings</p>
-      <button id="uploadBtn"><label for="fileuploadform" id="uploadLabel">Upload</label></button>
-      <input type="file" id="fileuploadform" /><br/>
-      <span id="percentage">70%</span>
-      <input type="range" min="1" max="99" value="70" id="slider" class="slider" step="1" /><br/>
-      <span id="result">Result: <span id="size">??Mb</span></span><br/>
-      <div id="shading">
-        <label for="smooth">Smooth Shading:</label>
-        <input type="checkbox" id="smooth" class="checkbox"/>
+    <link rel="stylesheet" href="style/main.css"/>
+    <link rel="canonical" href="https://{***URL***}/" />
+  </head>
+  <body>
+    <canvas id="c"></canvas>
+    <div id="content">
+      <div id="ui">
+        <div id="log">
+          <p class="count-cons">Initial Vertices Count: <span class="count" id="initial-count-number">0</span></p>
+          <p class="count-cons">Simplified Vertices Count: <span class="count" id="simple-count-number">0</span></p>
+          <p class="count-cons">Number of Resuced Vertices: <span class="count" id="reduced-count-number">0</span></p>
+        </div>
+        <input id="math" type="number" placeholder="100" value="50" />
+        <input type="range" max="100" min="0" value="50" id="slider" />
+        <label class="checkbox" id="rotate">
+          <input type="checkbox" id="auto-rotate" checked />
+          <span class="checkspan"></span>
+        </label>
+        <label class="checkbox" id="smooth">
+          <input type="checkbox" id="smooth-shading" />
+          <span class="checkspan"></span>
+        </label>
+        <label for="uploadform" id="uploadLabel">Upload</label>
+        <input type="file" id="uploadform" />
       </div>
-      <div id="cam-rotate">
-        <label for="rotate">Auto Rotate:</label>
-        <input type="checkbox" id="rotate" class="checkbox" checked/>
-      </div>
-      <div id="download_container">
-        <a id="download_a" hidden></a>
-        <button id="simplify">Reload</button>
-        <button id="download" disabled onclick="document.getElementById('download_a').click()">
-          Download
-        </button>
     </div>
-      <div id="simplify_box">
-        <ul id="simplify_log"><strong>Logs...</strong></ul>
-      </div>
-      <span id="status_span">(!) - <span id="status">Waiting for upload</span></span>
-    </div>
-    <p id="before">Before</p>
-    <p id="after">After</p>
-  </div>
 
-  <!-- Importing the JS files -->
-  <script type="importmap">
+    <!-- Importing the JS files -->
+    <script type="importmap">
       {
         "imports": {
           "three": "./javascript/libs/three.module.min.js",
@@ -87,9 +76,11 @@
         }
       }
     </script>
-  <script src="javascript/libs/dat.gui.min.js"></script>
-  <script src="javascript/libs/stats.min.js"></script>
-  
-  <script type="module" src="javascript/main.js"></script>
-</body>
+    <script src="javascript/libs/dat.gui.min.js"></script>
+    <script src="javascript/libs/stats.min.js"></script>
+
+    <script
+      type="module"
+      src="javascript/main.js"></script>
+  </body>
 </html>

@@ -1,18 +1,13 @@
 import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/OrbitControls.js'
 import { OBJLoader } from 'three/addons/OBJLoader.js'
+import { GLTFLoader } from 'three/addons/GLTFLoader.js'
 import { STLLoader } from 'three/addons/STLLoader.js'
+import { mergeVertices } from 'three/addons/BufferGeometryUtils.js'
 
-let optimizedModel = null
-
-/*
- * Events
- */
-document.getElementById('slider').addEventListener('input', () => {
-  update_simplify_to()
-})
-
+// Loading Models on Drop
 const mainDiv = document.getElementById('content')
+let loadedFile = null
 
 mainDiv.addEventListener('dragenter', (event) => {
   event.stopPropagation()
@@ -27,266 +22,122 @@ mainDiv.addEventListener('dragover', (event) => {
 mainDiv.addEventListener('drop', (event) => {
   event.stopPropagation()
   event.preventDefault()
-  dodrop(event)
+  dropped(event)
 })
 
-document.getElementById('fileuploadform').addEventListener('change', () => {
-  uploaded()
-})
-
-document.getElementById('simplify').addEventListener('click', () => {
-  uploaded()
-})
-
-/*
- * SimpQuadric Mesh Simplification
- * https://myminifactory.github.io/Fast-Quadric-Mesh-Simplification/
- */
-var worker = new Worker('./javascript/worker.js')
-
-worker.onmessage = function (e) {
-  const log = e.data.log
-  if (log !== undefined) {
-    var logger = document.getElementById('simplify_log')
-    logger.innerHTML += '<li>' + log + '</li>'
-    var box = document.getElementById('simplify_box')
-    box.scrollTop = box.scrollHeight
-    return
-  }
-
-  const file = e.data.blob
-  if (file !== undefined) {
-    const s_name = SIMPLIFY_FILE.simplify_name
-
-    let url = window.URL.createObjectURL(file)
-    optimizedModel = url
-
-    var download = document.getElementById('download_a')
-    download.href = url
-    download.download = s_name
-
-    var download_button = document.getElementById('download')
-    //download_button.innerHTML = 'Click to download ' + '<br>' + s_name
-    download_button.disabled = false
-    download_button.className = 'download_ready_signal'
-
-    // Call Three.js
-    loader(1)
-
-    setTimeout(function () {
-      download_button.className = ''
-    }, 1000)
-    put_status('Ready to download')
-    return
-  }
-
-  console.error('Unknown Message from WebWorker', e.data)
-}
-
-worker.onerror = function (e) {
-  console.log(e)
-  console.log('ERROR: Line ', e.lineno, ' in ', e.filename, ': ', e.message)
-}
-
-let SIMPLIFY_FILE = {
-  blob: undefined,
-  get name() {
-    if (this.exists) return this.blob.name
-  },
-  get simplify_name() {
-    if (this.exists) return 'simplify_' + this.name
-  },
-  get size() {
-    if (this.exists) return this.blob.size
-  },
-  get exists() {
-    if (this.blob) return true
-    else {
-      return false
-    }
-  },
-}
-
-function update_simplify_to() {
-  const slider_value = get_value_from_slider()
-  if (slider_value >= 10) document.getElementById('percentage').innerHTML = `${slider_value}%`
-  else document.getElementById('percentage').innerHTML = `0${slider_value}%`
-  if (SIMPLIFY_FILE.exists) {
-    document.getElementById('size').innerHTML = `~${Math.ceil(
-      (slider_value * SIMPLIFY_FILE.size) / (100 * 1024 * 1024),
-    )}MB`
-  }
-}
-
-function get_value_from_slider() {
-  return document.getElementById('slider').valueAsNumber
-}
-
-function uploaded(file) {
-  let uploadform = document.getElementById('fileuploadform')
-
-  if (file === undefined) {
-    // via upload button
-    uploadform = document.getElementById('fileuploadform')
-    file = uploadform.files[0]
-
-    // this helps to force trigger even if user upload the same file
-    // https://stackoverflow.com/a/12102992/5260518
-    uploadform.value = null
-  }
-
-  if (file === undefined) {
-    // not via upload button defined otherwise
-    file = SIMPLIFY_FILE.blob
-  }
-
-  //uploadform.files[0] = file
-
-  SIMPLIFY_FILE.blob = file
-  check_file(post_to_worker)
-
-  // Calling Three.js
+function dropped(event) {
+  loadedFile = event.dataTransfer.files[0]
   loader(0)
 }
 
-function check_file(success_cb) {
-  if (SIMPLIFY_FILE.name) {
-    put_status('Checking file')
-    const filename = SIMPLIFY_FILE.name
-    const extension = filename.toLowerCase().slice(filename.lastIndexOf('.') + 1, filename.length)
-    if (extension !== 'stl' && extension !== 'obj') {
-      put_status('Please upload an stl or obj file not ' + extension)
-      return
-    }
-    success_cb()
-  } else {
-    put_status('Upload a file first!')
-  }
-}
+document.getElementById('uploadform').addEventListener('change', () => {
+  let uploadform = document.getElementById('uploadform')
+  loadedFile = uploadform.files[0]
+  loader(0)
+})
 
-function post_to_worker() {
-  update_simplify_to()
-  put_status('Simplifying by the browser...See the logs')
-  worker.postMessage({
-    blob: SIMPLIFY_FILE.blob,
-    percentage: get_value_from_slider() / 100,
-    simplify_name: SIMPLIFY_FILE.simplify_name,
-  })
-}
-function dodrop(event) {
-  var dt = event.dataTransfer
-  var file = dt.files[0]
-  uploaded(file)
-}
+// Woring with Three.js
+let canvas, renderer, aspectRatio, initialVertCount, simplifiedVertCount
+let resolution = 25e-4
+let model, updatedModel
 
-function put_status(text) {
-  document.getElementById('status').textContent = text
-}
-
-function simplify() {
-  update_simplify_to()
-}
-
-window.onload = simplify
-
-/*
- * Three.js
- */
-let canvas, renderer, aspectRatio
 
 const scenes = []
-const controllers = []
+const loadingMgr = new THREE.LoadingManager(
+  () => {
+    // loaded
+    updateUI()
+  },
+  () => {}, // progress
+  (url) => {
+    // error
+    console.error(`Error while loading: ${url}`)
+  },
+)
 
 const atmos = new THREE.HemisphereLight(0xaaaaaa, 0x444444, 3)
 const light = new THREE.DirectionalLight(0xffffff, 1.5)
 light.position.set(1, 1, 1)
 
-const atmos2 = atmos.clone()
-const light2 = light.clone()
-
 const material = new THREE.MeshNormalMaterial({
   flatShading: true,
 })
 
-const placeholderMat = new THREE.MeshStandardMaterial({
-  wireframe: true,
-})
+function simplify(object) {
+  object.geometry = mergeVertices(object.geometry, resolution)
+  simplifiedVertCount += object.geometry.attributes.position.count
+  return object
+}
+
+function center(model) {
+  model.scale.setScalar(0.05)
+  const box3 = new THREE.Box3().setFromObject(model)
+  const vector = new THREE.Vector3()
+  box3.getCenter(vector)
+  model.position.set(-vector.x, -vector.y, -vector.z)
+}
 
 function loader(state) {
   const loaders = {
-    obj: new OBJLoader(),
-    stl: new STLLoader(),
+    obj: new OBJLoader(loadingMgr),
+    stl: new STLLoader(loadingMgr),
+    glb: new GLTFLoader(loadingMgr),
+    gltf: new GLTFLoader(loadingMgr),
   }
 
-  const loadObj = (file) => {
-    loaders.obj.load(file, (obj) => {
-      scenes[state].clear()
+  const loadModel = (type, file) => {
+    if (type === 'obj' || type === 'stl' || type === 'glb' || type === 'gltf') {
+      loaders[type].load(file, (object) => {
+        scenes[state].clear()
 
-      obj.traverse((models) => {
-        models.material = material
+        if (type === 'obj') {
+          object.traverse((models) => {
+            models.material = material
+          })
+          model = object
+        } else if (type === 'stl') {
+          model = new THREE.Mesh(object, material)
+        } else if (type === 'glb' || type === 'gltf') {
+          object.scene.traverse((models) => {
+            models.material = material
+          })
+          model = object.scene
+        }
+
+        updatedModel = model.clone()
+        initialVertCount = 0
+        simplifiedVertCount = 0
+
+        updatedModel.traverse((child) => {
+          if (child.isMesh) initialVertCount += child.geometry.attributes.position.count
+          if (child.isMesh) {
+            child = simplify(child)
+          }
+        })
+
+        // Centering Models
+        center(updatedModel)
+
+        scenes[state].add(updatedModel)
+        // scenes[state].add(model)
+        scenes[state].add(atmos)
+        scenes[state].add(light)
       })
-      scenes[state].add(obj)
-
-      if (state) {
-        scenes[state].add(atmos2)
-        scenes[state].add(light2)
-      } else {
-        scenes[state].add(atmos)
-        scenes[state].add(light)
-      }
-    })
-  }
-
-  const loadStl = (file) => {
-    loaders.stl.load(file, (stl) => {
-      scenes[state].clear()
-
-      const model = new THREE.Mesh(stl, material)
-      scenes[state].add(model)
-
-      if (state) {
-        scenes[state].add(atmos2)
-        scenes[state].add(light2)
-      } else {
-        scenes[state].add(atmos)
-        scenes[state].add(light)
-      }
-    })
+    } else {
+      console.log(`Wrong or unsupported file format. File type: ${type}`)
+    }
   }
 
   if (state === 0) {
-    if (SIMPLIFY_FILE.blob) {
-      const filename = SIMPLIFY_FILE.name
+    if (loadedFile) {
+      const filename = loadedFile.name
       const extension = filename.toLowerCase().slice(filename.lastIndexOf('.') + 1, filename.length)
-      if (extension === 'obj') {
-        const reader = new FileReader()
-        reader.addEventListener('load', function (e) {
-          const content = e.target.result
-          loadObj(content)
-        })
-        reader.readAsDataURL(SIMPLIFY_FILE.blob)
-      } else if (extension === 'stl') {
-        const reader = new FileReader()
-        reader.addEventListener('load', function (e) {
-          const content = e.target.result
-          loadStl(content)
-        })
-        reader.readAsDataURL(SIMPLIFY_FILE.blob)
-      } else {
-        console.log('Wrong file format, webgl will remain without changes!')
-      }
-    }
-  } else if (state === 1) {
-    if (optimizedModel) {
-      const filename = SIMPLIFY_FILE.simplify_name
-      const extension = filename.toLowerCase().slice(filename.lastIndexOf('.') + 1, filename.length)
-      if (extension === 'obj') {
-        loadObj(optimizedModel)
-      } else if (extension === 'stl') {
-        loadStl(optimizedModel)
-      } else {
-        console.log('Wrong file format, webgl will remain without changes!')
-      }
+      const reader = new FileReader()
+      reader.addEventListener('load', function (e) {
+        const content = e.target.result
+        loadModel(extension, content)
+      })
+      reader.readAsDataURL(loadedFile)
     }
   }
 }
@@ -295,57 +146,48 @@ canvas = document.getElementById('c')
 
 const content = document.getElementById('content')
 
-function createScene(i) {
-  const scene = new THREE.Scene()
+// Creating the Three.js scene
+const scene = new THREE.Scene()
 
-  // make a list item
-  const element = document.createElement('div')
-  element.className = 'list-item'
+// make a list item
+const element = document.createElement('div')
+element.className = 'list-item'
 
-  const sceneElement = document.createElement('div')
-  element.appendChild(sceneElement)
+const sceneElement = document.createElement('div')
+element.appendChild(sceneElement)
 
-  // the element that represents the area we want to render the scene
-  scene.userData.element = sceneElement
-  content.appendChild(element)
+// the element that represents the area we want to render the scene
+scene.userData.element = sceneElement
+content.appendChild(element)
 
-  const camera = new THREE.PerspectiveCamera(50, aspectRatio, 0.1, 100)
-  camera.position.set(2, 3, 5)
-  scene.userData.camera = camera
+const camera = new THREE.PerspectiveCamera(50, aspectRatio, 0.1, 10000)
+camera.position.set(2, 3, 5)
+scene.userData.camera = camera
 
-  const controls = new OrbitControls(scene.userData.camera, scene.userData.element)
-  controls.enableDamping = true
-  controls.autoRotate = true
-  controllers.push(controls)
+const controls = new OrbitControls(scene.userData.camera, scene.userData.element)
+controls.enableDamping = true
+controls.autoRotate = true
 
-  scene.userData.controls = controls
-  scenes.push(scene)
-  const updateControls = () => {
-    controls.update()
-    camera.aspect = aspectRatio
-    camera.updateProjectionMatrix()
-    requestAnimationFrame(updateControls)
-  }
-  updateControls()
+scene.userData.controls = controls
+scenes.push(scene)
+const updateControls = () => {
+  controls.update()
+  camera.aspect = aspectRatio
+  camera.updateProjectionMatrix()
+  requestAnimationFrame(updateControls)
 }
+updateControls()
 
-createScene(1)
-createScene(2)
-
-scenes[0].add(new THREE.Mesh(new THREE.SphereGeometry(0.5), placeholderMat))
+scenes[0].add(new THREE.Mesh(new THREE.SphereGeometry(1.5), material))
 scenes[0].add(atmos)
 scenes[0].add(light)
-
-scenes[1].add(new THREE.Mesh(new THREE.DodecahedronGeometry(0.5), placeholderMat))
-scenes[1].add(atmos2)
-scenes[1].add(light2)
 
 renderer = new THREE.WebGLRenderer({
   canvas: canvas,
   antialias: true,
 })
 renderer.setClearColor(0x1d1d21)
-renderer.setPixelRatio(window.devicePixelRatio)
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 
 function animate() {
   render()
@@ -356,7 +198,7 @@ animate()
 function updateSize() {
   const width = canvas.clientWidth
   const height = canvas.clientHeight
-  aspectRatio = width / 2 / height
+  aspectRatio = width / height
 
   if (canvas.width !== width || canvas.height !== height) {
     renderer.setSize(width, height, false)
@@ -368,11 +210,11 @@ function render() {
 
   canvas.style.transform = `translateY(${window.scrollY}px)`
 
-  renderer.setClearColor(0x1d1d21)
+  // renderer.setClearColor(0x1d1d21)
   renderer.setScissorTest(false)
   renderer.clear()
 
-  renderer.setClearColor(0x1d1d21)
+  // renderer.setClearColor(0x1d1d21)
   renderer.setScissorTest(true)
 
   scenes.forEach(function (scene) {
@@ -404,61 +246,73 @@ function render() {
 
     const camera = scene.userData.camera
 
-    //camera.aspect = width / height; // not changing in this example
-    //camera.updateProjectionMatrix();
-
-    //scene.userData.controls.update();
-
     renderer.render(scene, camera)
   })
 }
 
-/*
- * UI Panel
+/**
+ * UI
  */
 
-// Toggling the panel
-const clicker = document.getElementsByClassName('ui-title')[0]
-const uiPanel = document.getElementById('ui-con')
-let panelStatus = false
+const domInitialCount = document.getElementById('initial-count-number')
+const domSimpleCount = document.getElementById('simple-count-number')
+const domReducedCount = document.getElementById('reduced-count-number')
+const domMath = document.getElementById('math')
 
-function ui() {
-  if (panelStatus) {
-    uiPanel.style.height = 'auto'
-    clicker.classList.add('opened_ui')
-    panelStatus = false
-  } else {
-    uiPanel.style.height = '31px'
-    clicker.classList.remove('opened_ui')
-    panelStatus = true
-  }
+const slider = document.getElementById('slider')
+const smooth = document.getElementById('smooth-shading')
+const rotate = document.getElementById('auto-rotate')
+
+function updateUI() {
+  initialVertCount ? (domInitialCount.innerHTML = Number(initialVertCount).toLocaleString()) : null
+  simplifiedVertCount
+    ? (domSimpleCount.innerHTML = Number(simplifiedVertCount).toLocaleString())
+    : null
+  simplifiedVertCount
+    ? (domReducedCount.innerHTML = Number(simplifiedVertCount - initialVertCount).toLocaleString())
+    : null
 }
 
-clicker.addEventListener('click', ui)
-
-// Putting the log fullscreen on duble click
-const logUI = document.getElementById('simplify_box')
-
-logUI.addEventListener('dblclick', () => {
-  logUI.requestFullscreen()
-})
-
-// Auto rotate?
-const autoRotateCheck = document.getElementById('rotate')
-
-autoRotateCheck.addEventListener('input', (e) => {
-  const state = e.target.checked
-  controllers.forEach((controller) => {
-    controller.autoRotate = state
-  })
-})
-
-// Smooth Shadings?
-const smooth = document.getElementById('smooth')
-
-smooth.addEventListener('input', (e) => {
-  const state = e.target.checked
+slider.addEventListener('change', (e) => {
+  resolution = 25e-3 * domMath.value * (e.target.value / 100) + 1e-10
   
-  material.flatShading = state ? false : true
+  if(updatedModel) {
+    scenes[0].remove(updatedModel)
+
+    updatedModel = model.clone()
+    initialVertCount = 0
+    simplifiedVertCount = 0
+
+    updatedModel.traverse((child) => {
+      if (child.isMesh) initialVertCount += child.geometry.attributes.position.count
+      if (child.isMesh) {
+        child = simplify(child)
+      }
+    })
+    center(updatedModel)
+    scenes[0].add(updatedModel)
+    updateUI()
+  }
+})
+
+smooth.addEventListener('change', (e) => {
+  material.flatShading = !e.target.checked
   material.needsUpdate = true
+})
+
+rotate.addEventListener('change', (e) => {
+  controls.autoRotate = e.target.checked
+})
+
+// Fullscreen
+window.addEventListener('dblclick', () => {
+  if(!document.fullscreenElement) {
+    document.body.requestFullscreen()
+    document.body.webkitRequestFullscreen() // Safari
+    document.body.msRequestFullscreen() // EI
+  } else {
+    document.exitFullscreen();
+    document.webkitExitFullscreen(); // Safari
+    document.msExitFullscreen(); // EI
+  }
 })
