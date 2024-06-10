@@ -3,6 +3,13 @@ A [Threejs-based](https://threejs.org/) mesh simplifier.
 
 But before anything, check it out!
 [Online Demo](https://mesh-simplification.vercel.app/)
+<<<<<<< HEAD
+=======
+
+The example uses a `MeshNormalMaterail()` to show specifically all edges of the mesh so that artifacts will be easily detected during the process. The top-right panel may also feel a bit stiff, yet that is duo to time limitations.
+
+This was all created in two days (starting Jun 5 until Jun 7, 2024), 2-4 hours per day. A day before that was spent on researching and concepting.
+>>>>>>> ab01bcc60df41dfd17641c6f028dad869a5ed44e
 
 ## Usage
 First thing to see is a sphere. 
