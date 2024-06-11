@@ -61,6 +61,7 @@ light.position.set(1, 1, 1)
 
 const material = new THREE.MeshNormalMaterial({
   flatShading: true,
+  side: THREE.DoubleSide,
 })
 
 function simplify(object) {
