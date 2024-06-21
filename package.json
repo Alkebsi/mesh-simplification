@@ -1,0 +1,25 @@
+{
+  "name": "meshopti",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "meshoptimizer": "^0.20.0",
+    "stats-js": "^1.0.1",
+    "three": "0.165.0",
+    "three-dxf-viewer": "^1.0.32"
+  },
+  "devDependencies": {
+    "vite": "^5.3.1"
+  }
+}
