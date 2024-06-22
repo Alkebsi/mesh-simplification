@@ -92,14 +92,13 @@ body {
   position: fixed;
   top: 0px;
   left: 0px;
-  padding: 30px;
+  padding: 30px 30px 300px;
   width: 100%;
   height: 100vh;
   text-align: left;
   font-family: monospace;
   line-height: 19px;
   overflow-y: scroll;
-  pointer-events: none;
 }
 
 #log {
@@ -108,9 +107,8 @@ body {
 
 #log li {
   margin: 10px 0;
-  list-style: decimal inside;
+  list-style: decimal-leading-zero inside;
 }
-
 
 .count {
   font-weight: 900;

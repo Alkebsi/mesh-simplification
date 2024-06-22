@@ -535,7 +535,7 @@ slider.addEventListener('change', (e) => {
   else if (Number(e.target.value) === 2) 
     sliderValue = 7e-6
   else if (Number(e.target.value) === 3) 
-    sliderValue = 1e-5
+    sliderValue = 15e-6
 
   // Simplifying the model
   if (updatedModel) {

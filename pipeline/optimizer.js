@@ -11,7 +11,6 @@ export default class Optimizer {
   /**
    * Automatically Optimize and Download Models
    * @param {Mesh} model
-   * @return {Mesh}
    */
   optimize(model) {
     if(!model) {
@@ -24,10 +23,9 @@ export default class Optimizer {
 
     for (let i = 1; i <= 3; i++) {
       const updatedModel = this.mergeByDistance(model, Math.pow(maxSize, 2), i)
+      this.log(`Output pass ${i} vertices: ${updatedModel.geometry.attributes.position.count}`)
       this.download(updatedModel, i)
     }
-    
-    return updatedModel
   }
   
   /**
@@ -152,12 +150,12 @@ export default class Optimizer {
       return result
     }
 
-    let resolution = maxSizeSquared * 3e-6
+    let resolution = maxSizeSquared * 1e-6
 
     if (level === 2) {
       resolution = maxSizeSquared * 7e-6
     } else if (level === 3) {
-      resolution = maxSizeSquared * 15e-5
+      resolution = maxSizeSquared * 15e-6
     } else {
       // do nothing, set to the default 1 / 3e-6
     }
@@ -204,6 +202,8 @@ export default class Optimizer {
 
     const downloadFile = (blob, filename) => {
       const downloadable = new Blob([blob], { type: 'application/octet-stream' })
+      this.log(`Output pass ${pass} size: ~${Math.round(Number(downloadable.size / 1024)).toLocaleString()}KB`)
+
       link.href = URL.createObjectURL(downloadable)
       link.download = filename
       link.click()
@@ -223,12 +223,16 @@ export default class Optimizer {
     }
   }
   
-  logger() {
+  /**
+   * @param {String} info
+   * @param {Boolean} firstCall
+   */
+  log(info, firstCall = false) {
     // Removing previous logs
-    if(this.domLogger.innerHTML) {
+    if(firstCall) {
       this.domLogger.innerHTML = ''
     }
 
-    
+    this.domLogger.innerHTML += `<li>${info}</li>`
   }
 }

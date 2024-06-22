@@ -21,6 +21,7 @@ const opt = new Optimizer(logger)
 /**
  * Main Events
  */
+let elapsedTime = 0
 const mainDiv = document.getElementById('content')
 let loadedFile = null
 
@@ -50,6 +51,15 @@ document.getElementById('uploadform').addEventListener('change', () => {
   loadedFile = uploadform.files[0]
   loader(0)
 })
+
+function timer(start) {
+  if (start) {
+    elapsedTime = Date.now()
+  }
+  else {
+    elapsedTime -= Date.now()
+  }
+}
 
 /**
  * Three.js
@@ -111,6 +121,8 @@ function loader(state) {
             models.material = material
           })
           console.error('FBX files are not well supported, yet')
+          opt.log('FBX files are not well supported, yet')
+
           model = object
         } else if (type === 'usdc' || type === 'usdz') {
           console.log(object)
@@ -125,23 +137,36 @@ function loader(state) {
         modelChildrensSize = []
 
         updatedModel.traverse((child) => {
-          if (child.isMesh) initialVertCount += child.geometry.attributes.position.count
           if (child.isMesh) {
-            child = opt.optimize(child)
-            simplifiedVertCount = child.geometry.attributes.position.count
+            initialVertCount += child.geometry.attributes.position.count
+            opt.log(`Input vertices: ${initialVertCount}`)
+          }
+          if (child.isMesh) {
+            opt.optimize(child)
           }
         })
 
+        timer(false)
+        opt.log(`Finished in ${Math.abs(Number(elapsedTime)).toLocaleString()}ms. Please, reload the page if you want to upload the same file again.`)
         scenes[state].add(updatedModel)
       })
     } else {
       console.log(`Wrong or unsupported file format. File type: ${type}`)
+      opt.log(`Wrong or unsupported file format. File type: .${type} Please, upload .obj .slt or .glb files.`)
     }
   }
 
   if (state === 0) {
     if (loadedFile) {
       opt.updateLoadedFile(loadedFile)
+      opt.log('Loading model...', true)
+      opt.log(`Input file name: ${loadedFile.name}`)
+      opt.log(`Input file size: ~${Math.round(Number(loadedFile.size / 1024)).toLocaleString()}KB`)
+      opt.log(`Getting files ready to be downloaded...`)
+      opt.log(`---------Please--Wait----------`)
+
+      timer(true)
+
       const filename = loadedFile.name
       const extension = filename.toLowerCase().slice(filename.lastIndexOf('.') + 1, filename.length)
       const reader = new FileReader()
